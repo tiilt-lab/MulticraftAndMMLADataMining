@@ -12,8 +12,12 @@ for folder in folders:
 	gaze_files = [f for f in os.listdir(folder) if "gazedata.stream~" in f]
 	video_file = None
 	gaze_file = None
-	video_file = [f for f in video_files if file_ in f][0]
-	gaze_file =  [f for f in gaze_files if file_ in f][0]
+	# video_file = [f for f in video_files if file_ in f][0]
+	# gaze_file =  [f for f in gaze_files if file_ in f][0]
+	if len(video_files) == 0 or len(gaze_files) == 0: 
+		continue
+	video_file = video_files[0] 
+	gaze_file = gaze_files[0]
 
 
 	cap = cv.VideoCapture(os.path.join(folder,video_file))
@@ -28,9 +32,10 @@ for folder in folders:
 	#time_step = 0.2
 	c_run_time = 0.0
 	name = "_".join(["mmla_1",folder,video_file])
-	fourcc =cv.VideoWriter_fourcc(*'mpv4')
+	fourcc =cv.VideoWriter_fourcc(*'mp4v')
 	out = cv.VideoWriter(name, fourcc, video_fps, (1280,720))
 	while(cap.isOpened()):
+		print("It's running")
 		ret, frame=cap.read()
 		matches=None
 		if ret == True:

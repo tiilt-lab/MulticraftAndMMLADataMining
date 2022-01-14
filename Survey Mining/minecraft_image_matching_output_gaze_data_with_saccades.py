@@ -94,6 +94,10 @@ for line in csv_file:
 	if parent_folder == '':
 		continue
 	folder_name = line["folder"]
+	if folder_name != "mc06" or parent_folder == "lab": 
+		print(parent_folder)
+		print(folder_name)
+		continue
 	file_=line["file_name"]
 	folder = os.path.join(parent_folder, folder_name)
 	video_files = [os.path.join(folder,f) for f in os.listdir(folder) if ".mp4" in f]
@@ -359,8 +363,7 @@ for line in csv_file:
 	#print("done processing video for", str(user_index))
 #print(",".join(["user"]+[str(a).replace(",",";") for a in all_indices] + ["occ_"+str(a).replace(",",";") for a in all_indices] + ["avg_"+str(a).replace(",",";") for a in all_indices] + [str(a).replace(",",";") for a in n_fixation_counter_labels] + ["score","wrong"]))
 
-# TODO: Figure out how this file was made
-csv_outfile = open("fixation_contour_occ_output_v5.csv","wb")
+csv_outfile = open("fixation_contour_occ_output_v5.csv","w")
 csv_out = csv.writer(csv_outfile, delimiter=",")
 csv_out.writerow(["user"]+[str(a).replace(",",";") for a in all_indices] + ["occ_"+str(a).replace(",",";") for a in all_indices if "x" not in a and "y" not in a] + ["avg_"+str(a).replace(",",";") for a in all_indices if "x" not in a and "y" not in a] + [str(a).replace(",",";") for a in n_fixation_counter_labels] + ["score","wrong"])
 #for user in user_fixation_occ:
