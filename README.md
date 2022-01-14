@@ -16,3 +16,7 @@
             - Alternatively, update the data_output_w_times file to whatever the path is for the video + gaze data
         - Can do this for multiple videos, just make multiple folders, and/or update the data_output_w_times file accordingly
         - Output appears in directory of script 
+
+# Notes on Saccade Processing 
+* Reuse code potential 
+    - 

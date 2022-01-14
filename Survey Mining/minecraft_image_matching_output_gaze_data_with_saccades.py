@@ -76,7 +76,6 @@ for line in csv_data:
 ''' This loop iterates over the video files and performs feature extraction on each frame of the video.
 It also opens the corresponding gaze file and processes the data according to the associated video frame
 '''
-# TODO: Figure out how this file was made
 survey_file = "data_output_w_times_v3.csv"
 survey_csv = open(survey_file)
 csv_file =csv.DictReader(survey_csv)
@@ -88,44 +87,95 @@ mindur = 5
 user_fixations = {}
 user_question_time = {}
 image_times_list = {}
-#add fixation revisits
+#add fixation revisits 
 for line in csv_file:
+	# ------------------------------------------------------------------------------------------------------------
+	# Look at path from each line in csv file 
+	# Each line is a new path 
+	# ------------------------------------------------------------------------------------------------------------
 	parent_folder = line["parent_folder"]
 	if parent_folder == '':
 		continue
 	folder_name = line["folder"]
+
+	# ------------------------------------------------------------------------------------------------------------
+	# TODO: Remove when actually running on data
+	# To filter based on one instance we made for testing
+	# ------------------------------------------------------------------------------------------------------------
 	if folder_name != "mc06" or parent_folder == "lab": 
 		print(parent_folder)
 		print(folder_name)
 		continue
+
+	# ------------------------------------------------------------------------------------------------------------
+	# Just a number because SSI labels the outputs as numbers, sometimes multiple files with 
+	# different numbers will be on there due to testing issues and SSI running multiple times 
+	# Each different number is a different time that SSI was ran 
+	# ------------------------------------------------------------------------------------------------------------
 	file_=line["file_name"]
 	folder = os.path.join(parent_folder, folder_name)
+
+	# ------------------------------------------------------------------------------------------------------------
+	# Get corresponding video and gaze file based on the path given in the csv and the number the file has
+	# ------------------------------------------------------------------------------------------------------------
 	video_files = [os.path.join(folder,f) for f in os.listdir(folder) if ".mp4" in f]
 	gaze_files = [os.path.join(folder,f) for f in os.listdir(folder) if "gazedata.stream~" in f]
 	video_file = None
 	gaze_file = None
+
+	# ------------------------------------------------------------------------------------------------------------
+	# Get score -- not sure if was used
+	# ------------------------------------------------------------------------------------------------------------
 	user_index = int(line['user'])
 	user_score = float(line["average_score"]) <0
 	user_incorrect = float(line["user_incorrect"]) <=1
 	user_data[user_index]= (user_score, user_incorrect)
+
+	# ------------------------------------------------------------------------------------------------------------
+	# Get number of times user fixated 
+	# Almost not used, since this is for saccades
+	# ------------------------------------------------------------------------------------------------------------
+
+	# ------------------------------------------------------------------------------------------------------------
+	# Keep track of total duration
+	# ------------------------------------------------------------------------------------------------------------
 	user_fixation_counter[user_index]= Counter()
+
+	# ------------------------------------------------------------------------------------------------------------
+	# Keep track of number of fixations for previous contours??? 
+	# ------------------------------------------------------------------------------------------------------------
 	n_fixation_counter[user_index]= Counter()
+
+	# ------------------------------------------------------------------------------------------------------------
+	# Keep track of number of total fixations
+	# ------------------------------------------------------------------------------------------------------------
 	user_fixation_occ[user_index]=Counter()
+
+	# ------------------------------------------------------------------------------------------------------------
+	# Get file
+	# ------------------------------------------------------------------------------------------------------------
 	if file_ =="":
 		video_file = video_files[0]
 		gaze_file = gaze_files[0]
 	else:
 		video_file = [f for f in video_files if file_ in f][0]
 		gaze_file =  [f for f in gaze_files if file_ in f][0]
+
+	# ------------------------------------------------------------------------------------------------------------
+	# Opening file and gazedata
+	# ------------------------------------------------------------------------------------------------------------
 	cap = cv.VideoCapture(video_file)
 	video_fps = float(cap.get(cv.CAP_PROP_FPS)) #5.0
 	gazefile = open(gaze_file, "r")
 	list_of_datapoints = gazefile.readlines()
+
+	# ------------------------------------------------------------------------------------------------------------
+	# Get datapoint coordinates and find fixations and saccades 
+	# ------------------------------------------------------------------------------------------------------------
 	gaze_x = []
 	gaze_y = []
 	gaze_time = []
 	user_sequence = []
-	
 	for i in range(len(list_of_datapoints)):
 		g_x,g_y,t = list_of_datapoints[i].split()
 		if float(g_x) > 1280:
@@ -142,6 +192,9 @@ for line in csv_file:
 	
 	c_run_time = 0.0
 
+	# ------------------------------------------------------------------------------------------------------------
+	# Initiatizing object detection 
+	# ------------------------------------------------------------------------------------------------------------
 	match_found = False
 	image_index=0
 	p_kp, p_dp = np.array([]),np.array([])
@@ -151,6 +204,10 @@ for line in csv_file:
 	and width to use as an offset later on
 	'''
 	#print("processing video", video_file)
+
+	# ------------------------------------------------------------------------------------------------------------
+	# Initializing state
+	# ------------------------------------------------------------------------------------------------------------
 	frame_counter = 0
 	user_gaze_points = {}
 	question_start = int(line["first_question"])*video_fps
@@ -164,8 +221,17 @@ for line in csv_file:
 	c_fixation_index=0
 	f_saccade_index=0
 	increment = True
+
+	# ------------------------------------------------------------------------------------------------------------
+	# Looking through video
+	# ------------------------------------------------------------------------------------------------------------
 	while(cap.isOpened()):
 		increment=True
+
+		# ------------------------------------------------------------------------------------------------------------
+		# Getting data from fixations 
+		# c_x, c_y: I think are the last points at the end of fixation 
+		# ------------------------------------------------------------------------------------------------------------
 		c_fix_start_time, c_fix_end_time, c_fix_dur, p_x,p_y, c_x, c_y  = fsacc[c_fixation_index]
 		c_fix_end_time/=1000.0
 		c_fix_end_time*=video_fps
@@ -174,8 +240,10 @@ for line in csv_file:
 		c_fix_start_time*=video_fps
 		c_fix_start_time = round(c_fix_start_time)
 
+		# ------------------------------------------------------------------------------------------------------------
+		# Skipping over data until question starts 
+		# ------------------------------------------------------------------------------------------------------------
 		while(int(c_fix_end_time) < question_start):
-
 			c_fixation_index+=1
 			c_fix_start_time, c_fix_end_time, c_fix_dur,p_x,p_y, c_x, c_y  = fsacc[c_fixation_index]
 			c_fix_end_time/=1000.0
@@ -186,6 +254,10 @@ for line in csv_file:
 			c_fix_start_time = round(c_fix_start_time)
 		ret, frame=cap.read()
 		#print(frame_counter, question_start, ret)
+
+		# ------------------------------------------------------------------------------------------------------------
+		# Getting batches of gaze data together (based on frame)
+		# ------------------------------------------------------------------------------------------------------------
 		if frame_counter>=question_start:
 			user_sequence.append(-1)
 			#print(c_fix_start_time, c_fix_end_time, frame_counter, range(int(c_fix_start_time), int(c_fix_end_time)+1))
