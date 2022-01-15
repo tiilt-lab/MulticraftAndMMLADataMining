@@ -271,10 +271,18 @@ for line in csv_file:
 			#cv.waitKey()
 
 			matches=None
+
+			# ------------------------------------------------------------------------------------------------------------
+			# Check if frame is available and picture is valid
+			# ------------------------------------------------------------------------------------------------------------
 			if ret == True and image_index<len(images_files):
+				# ------------------------------------------------------------------------------------------------------------
+				# Initialize dictionary for gaze points
+				# ------------------------------------------------------------------------------------------------------------
 				if image_index not in user_gaze_points:
 					user_gaze_points[image_index]={}
 				if frame_counter >= question_start:
+					# Get contours
 					img2 = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
 					img_copy = img2.copy()
 					ret, thresh = cv.threshold(img2,127,255, cv.THRESH_BINARY_INV) #we use thresholding to find the bounding box
@@ -287,9 +295,17 @@ for line in csv_file:
 					cois = []
 					contour_o_i = None
 					coi_set = False
+
+					# ------------------------------------------------------------------------------------------------------------
+					# Look at each contour
+					# ------------------------------------------------------------------------------------------------------------
 					for cnt in contours:
 						(x,y,w,h) = cv.boundingRect(cnt)
 						#print(x,y,w,h)
+
+						# ------------------------------------------------------------------------------------------------------------
+						# Check if contour is in the box
+						# ------------------------------------------------------------------------------------------------------------
 						if (w > 600 and w < 800) and ( h > 100 and h < 500):
 							img_to_check = img2[y:y+h, x:x+w]  #this restricts the box over which to check from keypoints to the box that contains the reference image
 
@@ -300,7 +316,9 @@ for line in csv_file:
 							coi_set = True
 							break
 							#cv.rectangle(img_copy, (x,y),(x+w,y+h),(255, 0, 0),10)
-
+					# ------------------------------------------------------------------------------------------------------------
+					# Initial image is from all stimuli
+					# ------------------------------------------------------------------------------------------------------------
 					keypoints2, descriptors2 = detector.detectAndCompute(img_to_check, None)
 					#this section looks at the level of similarity between the current frame and the previous frame. This helps us know when the stimulus has changed. 
 					p_matches=0
@@ -313,6 +331,11 @@ for line in csv_file:
 							p_matches= 0
 					
 					if type(descriptors2)!=None.__class__ and descriptors2.any():
+						
+						# ------------------------------------------------------------------------------------------------------------
+						# Checking previous image or all_stimuli image
+						# ------------------------------------------------------------------------------------------------------------
+
 						matches = matcher.match(image_keypoints[image_index]["descriptors"], descriptors2)
 						keypoints1=image_keypoints[image_index]["keypoints"]
 						img1 = images[image_index] # trainImage
@@ -320,6 +343,12 @@ for line in csv_file:
 						keypoints_to_keep = []
 						keypoints_offsets = {'x':[],'y':[]}
 						# within this loop we keep track of the similarity between the reference image and the current stimulus image
+						
+						# ------------------------------------------------------------------------------------------------------------
+						# Get offsets to create mapping from gaze data in video to the reference image from all_stimuli 
+						# We are doing this because the analysis is done on the all_stimuli image rather than the current frame 
+						# ------------------------------------------------------------------------------------------------------------
+
 						for match in matches:
 							if match.distance<35: #35
 								#check if keypoints are both on the same half (check x values) check if greater than box_x + w/2, or the image.shape[0]/2
@@ -335,6 +364,8 @@ for line in csv_file:
 						if len(stats.mode(np.array(keypoints_offsets['x'])).mode)>0:
 							x_median_offset = stats.mode(np.array(keypoints_offsets['x'])).mode[0]
 							y_median_offset = stats.mode(np.array(keypoints_offsets['y'])).mode[0]
+						
+						# start_index not used 	
 						start_index = int(90*frame_counter/video_fps) #used to determine the start index for the gaze points that correspond to the current frame
 						c_img =img1.copy()
 						#this loop processes the gaze data for the current video frame. it transforms that data point to the corresponding point in the reference image.
@@ -344,33 +375,76 @@ for line in csv_file:
 						#p_y = int(float(p_y))
 						#p_x_os = int(p_x - box_x + x_median_offset)
 						#p_y_os = int(p_y - box_y + y_median_offset)
+
+						# ------------------------------------------------------------------------------------------------------------
+						# box_x is the corner where the stimuli image starts in the video 
+						# Subtracting it allows for c_x to be referenced from the origin of the stimuli image (given by all_stimuli)
+						# Median offset is because the images are not perfectly similar (size or maybe cut off)
+						# ------------------------------------------------------------------------------------------------------------
+
 						c_x_os = int(c_x - box_x + x_median_offset)
 						c_y_os = int(c_y - box_y + y_median_offset)
 						u_image = images_files[image_index]
 						#p_x_os = int(p_x - box_x + x_median_offset)
 						#p_y_os = int(p_y - box_y + y_median_offset)
 						c_contours = []
+
+						# ------------------------------------------------------------------------------------------------------------
+						# Go through all contours in given image 
+						# ------------------------------------------------------------------------------------------------------------
 						for cnt_index,cnt in image_contours[u_image].items():
 							(x,y,w,h) = cv.boundingRect(cnt)
 							imgc = img1.copy()
 							#print(x,y,w,h, c_x_os, c_y_os, cv.pointPolygonTest(cnt,(c_x_os, c_y_os),0))
+
+							# ------------------------------------------------------------------------------------------------------------
+							# Check if point is in contour 
+							# ------------------------------------------------------------------------------------------------------------
+
 							if cv.pointPolygonTest(cnt,(c_x_os, c_y_os),1)>=-5:
+
+								# ------------------------------------------------------------------------------------------------------------
+								# The contour is denoted as an index, which stays consistent as to which contour it is 
+								# The image index is which image we are looking at 
+								# Appending this to a list of image-contour pairs that we fixated on 
+								# ------------------------------------------------------------------------------------------------------------
+
 								if (image_index, cnt_index) not in all_indices:
 									all_indices.append((image_index, cnt_index))
+
 								#print(image_index, cnt_index, len(c_fixation), p_x_os, p_y_os, x,y,w,h)
 								#cv.drawContours(imgc, [cnt], 0, (0,255,0), 3)
 								#cv.circle(imgc, (p_x_os-5, p_y_os-5), 5, (255,0,0), 2) 
 								#cv.imshow("images", imgc) 
 								#cv.waitKey()
+
+								# ------------------------------------------------------------------------------------------------------------
+								# Update the fixation duration and count for the contour
+								# ------------------------------------------------------------------------------------------------------------
 								user_fixation_counter[user_index][(image_index, cnt_index)]+=(c_fix_dur/1000.0)
 								user_fixation_occ[user_index][(image_index, cnt_index)]+=1
 								for p_contour_index in p_contours:
+									# ------------------------------------------------------------------------------------------------------------
+									# TODO: let team know this already exists
+									# This is basically the bi-grams correlation that we were talking about 
+									# Looks at the last contours and the new contours and matches them together 
+									# ------------------------------------------------------------------------------------------------------------
 									n_fixation_counter[user_index][(image_index, p_contour_index, cnt_index)]+=1
 									if (image_index, p_contour_index, cnt_index) not in n_fixation_counter_labels:
 										n_fixation_counter_labels.append((image_index, p_contour_index, cnt_index))
+								
+								# ------------------------------------------------------------------------------------------------------------
+								# Keep track of the sequence of contours looked at 
+								# Keep track of the contours looked at (by index)
+								# ------------------------------------------------------------------------------------------------------------
+
 								c_contours.append(cnt_index)
 								user_sequence[-1]=cnt_index
 								#fixation_sequence.append()
+						
+						# ------------------------------------------------------------------------------------------------------------
+						# Update the previous contours looked at to be the current contours
+						# ------------------------------------------------------------------------------------------------------------
 						p_contours = c_contours	
 
 						'''
@@ -390,10 +464,22 @@ for line in csv_file:
 								user_fixation_counter[user_index][(image_index, cnt_index)]+=1
 						'''	
 						#print(len(limited_matches))
+
+						# ------------------------------------------------------------------------------------------------------------
+						# Check if at least 5 matches because not all are accurate
+						# ------------------------------------------------------------------------------------------------------------
+
 						if len(limited_matches) >=5: #other approach is to look how many clicks per page, and wait for those clicks to happen
 							match_found=True
 							#print("match found", match_counter)
 							match_counter+=1
+
+						# ------------------------------------------------------------------------------------------------------------
+						# TODO: Figure out why these conditions are the way they are and get an explanation for it 
+						# If this is true, then they are on the next question so update the question and the image 
+						# index to be the next stimuli and reset the states
+						# ------------------------------------------------------------------------------------------------------------
+
 						#print(match_found, match_counter, p_matches)
 						if (match_found ==True and p_matches <10 and match_counter>5) or (match_found==True and len(limited_matches)<=2 and p_matches<400): #4 for other tests - # or c_question_duration > video_fps * float(line["C"+str(image_index+1)]):
 							#print(match_found ==True and p_matches <10 and match_counter>5, c_question_duration > video_fps * float(line["C"+str(image_index+1)]))
