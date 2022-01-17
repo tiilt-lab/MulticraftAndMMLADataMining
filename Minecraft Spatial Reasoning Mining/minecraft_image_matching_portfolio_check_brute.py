@@ -1,3 +1,6 @@
+# Splits into scenes where people are looking at the portfolio
+# Doesn't track fixations or anything
+
 from __future__ import print_function
 import cv2 as cv
 import numpy as np
