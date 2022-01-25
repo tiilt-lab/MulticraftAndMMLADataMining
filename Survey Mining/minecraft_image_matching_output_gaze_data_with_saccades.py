@@ -76,7 +76,7 @@ for line in csv_data:
 ''' This loop iterates over the video files and performs feature extraction on each frame of the video.
 It also opens the corresponding gaze file and processes the data according to the associated video frame
 '''
-survey_file = "data_output_w_times_v3.csv"
+survey_file = "data_output.csv"
 survey_csv = open(survey_file)
 csv_file =csv.DictReader(survey_csv)
 all_indices = []
@@ -99,12 +99,9 @@ for line in csv_file:
 	folder_name = line["folder"]
 
 	# ------------------------------------------------------------------------------------------------------------
-	# TODO: Remove when actually running on data
-	# To filter based on one instance we made for testing
+	# To filter based on what isn't denoted as "skip"
 	# ------------------------------------------------------------------------------------------------------------
-	if folder_name != "mc06" or parent_folder == "lab": 
-		print(parent_folder)
-		print(folder_name)
+	if folder_name == "skip" or parent_folder == "skip": 
 		continue
 
 	# ------------------------------------------------------------------------------------------------------------
@@ -166,6 +163,8 @@ for line in csv_file:
 	# ------------------------------------------------------------------------------------------------------------
 	cap = cv.VideoCapture(video_file)
 	video_fps = float(cap.get(cv.CAP_PROP_FPS)) #5.0
+	print(video_fps)
+	print(gaze_file)
 	gazefile = open(gaze_file, "r")
 	list_of_datapoints = gazefile.readlines()
 
@@ -177,7 +176,10 @@ for line in csv_file:
 	gaze_time = []
 	user_sequence = []
 	for i in range(len(list_of_datapoints)):
-		g_x,g_y,t = list_of_datapoints[i].split()
+		points = list_of_datapoints[i].split()
+		if len(points) != 3: 
+			continue
+		g_x,g_y,t = points
 		if float(g_x) > 1280:
 			g_x = 0.0
 		if float(g_y) > 800:
@@ -188,6 +190,9 @@ for line in csv_file:
 		gaze_time.append(g_t)
 	sfix, efix = fixation_detection(np.array(gaze_x), np.array(gaze_y), np.array(gaze_time), missing=0.0, maxdist=25, mindur=50)
 	ssacc, fsacc = saccade_detection(np.array(gaze_x), np.array(gaze_y), np.array(gaze_time), missing=0.0, minlen=5, maxvel=40, maxacc=340)
+	if (len(fsacc) == 0): 
+		print("fsacc is 0")
+		continue
 	#time_step = 0.2
 	
 	c_run_time = 0.0
