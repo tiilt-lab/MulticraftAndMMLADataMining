@@ -7,7 +7,7 @@
     * Output appears in directory of script 
 2. Instructions on how to use Saccade Processing 
     * To run with real data 
-        - Get data_output_w_times.csv from Qualtrics 
+        - Get data_output_w_times_combined.csv from Qualtrics 
             - Might need to add data (the file locations and whatnot)
         - Get corresponding data with it 
             - Bring over the videos in the right places or the original format, however it is reflected on the csv
@@ -16,6 +16,11 @@
             - Alternatively, update the data_output_w_times file to whatever the path is for the video + gaze data
         - Can do this for multiple videos, just make multiple folders, and/or update the data_output_w_times file accordingly
         - Output appears in directory of script 
+
+# Note: 
+    * data_output_w_times_combined and qualtrics_mapping_combined are the results two studies combined
+    * excluding_questions is the results combined, but only with the questions they have in commong 
+    * exploration was the initial data that was run to see how the code worked on the current data  
 
 # Notes on Saccade Processing 
 * Reuse code potential 

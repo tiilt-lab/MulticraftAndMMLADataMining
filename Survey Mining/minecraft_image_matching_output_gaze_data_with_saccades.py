@@ -14,7 +14,7 @@ from detectors import *
 detector = cv.ORB_create(1000)
 #images_roi_counter = {}
 
-mapping_file = "qualtrics_mapping.csv" #file provides mapping between the question and the reference image
+mapping_file = "qualtrics_mapping_combined.csv" #file provides mapping between the question and the reference image
 csv_file = open(mapping_file)
 csv_data=csv.DictReader(csv_file)
 images_files= [] #store the filename for each image
@@ -76,7 +76,7 @@ for line in csv_data:
 ''' This loop iterates over the video files and performs feature extraction on each frame of the video.
 It also opens the corresponding gaze file and processes the data according to the associated video frame
 '''
-survey_file = "data_output.csv"
+survey_file = "data_output_combined.csv"
 survey_csv = open(survey_file)
 csv_file =csv.DictReader(survey_csv)
 all_indices = []
@@ -227,6 +227,8 @@ for line in csv_file:
 	f_saccade_index=0
 	increment = True
 
+	# TODO: Add skip indexes 
+
 	# ------------------------------------------------------------------------------------------------------------
 	# Looking through video
 	# ------------------------------------------------------------------------------------------------------------
@@ -281,6 +283,9 @@ for line in csv_file:
 			# Check if frame is available and picture is valid
 			# ------------------------------------------------------------------------------------------------------------
 			if ret == True and image_index<len(images_files):
+
+				# TODO: check if speadsheet is to skip and then check if index value is in skipped array 
+
 				# ------------------------------------------------------------------------------------------------------------
 				# Initialize dictionary for gaze points
 				# ------------------------------------------------------------------------------------------------------------
@@ -526,7 +531,7 @@ for line in csv_file:
 	#print("done processing video for", str(user_index))
 #print(",".join(["user"]+[str(a).replace(",",";") for a in all_indices] + ["occ_"+str(a).replace(",",";") for a in all_indices] + ["avg_"+str(a).replace(",",";") for a in all_indices] + [str(a).replace(",",";") for a in n_fixation_counter_labels] + ["score","wrong"]))
 
-csv_outfile = open("fixation_contour_occ_output_v5.csv","w")
+csv_outfile = open("fixation_contour_occ_output_combined.csv","w")
 csv_out = csv.writer(csv_outfile, delimiter=",")
 csv_out.writerow(["user"]+[str(a).replace(",",";") for a in all_indices] + ["occ_"+str(a).replace(",",";") for a in all_indices if "x" not in a and "y" not in a] + ["avg_"+str(a).replace(",",";") for a in all_indices if "x" not in a and "y" not in a] + [str(a).replace(",",";") for a in n_fixation_counter_labels] + ["score","wrong"])
 #for user in user_fixation_occ:
