@@ -227,8 +227,6 @@ for line in csv_file:
 	f_saccade_index=0
 	increment = True
 
-	# TODO: Add skip indexes 
-
 	# ------------------------------------------------------------------------------------------------------------
 	# Looking through video
 	# ------------------------------------------------------------------------------------------------------------
@@ -283,8 +281,6 @@ for line in csv_file:
 			# Check if frame is available and picture is valid
 			# ------------------------------------------------------------------------------------------------------------
 			if ret == True and image_index<len(images_files):
-
-				# TODO: check if speadsheet is to skip and then check if index value is in skipped array 
 
 				# ------------------------------------------------------------------------------------------------------------
 				# Initialize dictionary for gaze points
