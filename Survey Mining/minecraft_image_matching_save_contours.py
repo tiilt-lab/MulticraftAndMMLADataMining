@@ -247,7 +247,7 @@ def saccade_detection(x, y, time, missing=0.0, minlen=5, maxvel=40, maxacc=340):
 detector = cv.ORB_create(1000)
 #images_roi_counter = {}
 
-mapping_file = "qualtrics_mapping.csv" #file provides mapping between the question and the reference image
+mapping_file = "qualtrics_mapping_excluding_questions.csv" #file provides mapping between the question and the reference image
 csv_file = open(mapping_file)
 csv_data=csv.DictReader(csv_file)
 images_files= [] #store the filename for each image
@@ -288,11 +288,12 @@ for line in csv_data:
 	#within each Counter make a counter for above median, below median, for time and score
 	image_contours[file_name]={}
 	fixation_counter[file_name]={}
+	contours_folder = ".\\contours"
 	for c in range(len(contours)):
 		#print(contours[c])
 		#print(hier[0][c])
 		(x,y,w,h) = cv.boundingRect(contours[c])
-		if (w * h) > 2000 and (w * h) <  :
+		if (w * h) > 2000:
 			#print(w*h)
 			#c_contour = contours[c]
 			fixation_counter[file_name][c]= Counter()
@@ -300,7 +301,8 @@ for line in csv_data:
 			img_save = c_img.copy()
 			cv.cvtColor(img_save, cv.COLOR_BGR2HSV)
 			cv.drawContours(img_save, contours, c, (0,255,0), 3)
-			cv.imwrite(str(images_files.index(file_name))+"_"+str(c) + ".jpg", img_save)
+			path = os.path.join(contours_folder, str(images_files.index(file_name))+"_"+str(c) + ".jpg")
+			cv.imwrite(path, img_save)
 
 ''' This loop iterates over the video files and performs feature extraction on each frame of the video.
 It also opens the corresponding gaze file and processes the data according to the associated video frame
