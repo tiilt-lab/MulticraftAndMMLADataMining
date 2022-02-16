@@ -5,37 +5,67 @@ import csv
 import os
 
 
-folders = [a for a in os.listdir(".") if os.path.isdir(a)]
+survey_file = "data_output_excluding_questions.csv"
+survey_csv = open(survey_file)
+csv_file =csv.DictReader(survey_csv)
 
-for folder in folders:
-	video_files = [f for f in os.listdir(folder) if ".mp4" in f]
-	gaze_files = [f for f in os.listdir(folder) if "gazedata.stream~" in f]
+for line in csv_file:
+	# ------------------------------------------------------------------------------------------------------------
+	# Look at path from each line in csv file
+	# Each line is a new path
+	# ------------------------------------------------------------------------------------------------------------
+	parent_folder = line["parent_folder"]
+	if parent_folder == '':
+		continue
+	folder_name = line["folder"]
+
+	# ------------------------------------------------------------------------------------------------------------
+	# To filter based on what isn't denoted as "skip"
+	# ------------------------------------------------------------------------------------------------------------
+	if folder_name == "skip" or parent_folder == "skip":
+		continue
+
+	# ------------------------------------------------------------------------------------------------------------
+	# Just a number because SSI labels the outputs as numbers, sometimes multiple files with
+	# different numbers will be on there due to testing issues and SSI running multiple times
+	# Each different number is a different time that SSI was ran
+	# ------------------------------------------------------------------------------------------------------------
+	file_=line["file_name"]
+	folder = os.path.join(parent_folder, folder_name)
+
+	# ------------------------------------------------------------------------------------------------------------
+	# Get corresponding video and gaze file based on the path given in the csv and the number the file has
+	# ------------------------------------------------------------------------------------------------------------
+	video_files = [os.path.join(folder, f) for f in os.listdir(folder) if ".mp4" in f]
+	gaze_files = [os.path.join(folder, f) for f in os.listdir(folder) if "gazedata.stream~" in f]
 	video_file = None
 	gaze_file = None
-	# video_file = [f for f in video_files if file_ in f][0]
-	# gaze_file =  [f for f in gaze_files if file_ in f][0]
-	if len(video_files) == 0 or len(gaze_files) == 0: 
-		continue
-	video_file = video_files[0] 
-	gaze_file = gaze_files[0]
 
+	# ------------------------------------------------------------------------------------------------------------
+	# Get file
+	# ------------------------------------------------------------------------------------------------------------
+	if file_ == "":
+		video_file = video_files[0]
+		gaze_file = gaze_files[0]
+	else:
+		video_file = [f for f in video_files if file_ in f][0]
+		gaze_file = [f for f in gaze_files if file_ in f][0]
 
-	cap = cv.VideoCapture(os.path.join(folder,video_file))
+	cap = cv.VideoCapture(video_file)
 	frame_counter = 0
 	video_fps = float(cap.get(cv.CAP_PROP_FPS)) #5.0
 	num_gaze_per_frame = int(18/(video_fps/5.0))
 	images_files= []
 	images = []
 	image_keypoints  = []
-	gazefile = open(os.path.join(folder, gaze_file), "r")
+	gazefile = open(gaze_file, "r")
 	list_of_datapoints = gazefile.readlines()
 	#time_step = 0.2
 	c_run_time = 0.0
-	name = "_".join(["mmla_1",folder,video_file])
+	name = os.path.join(".\\processed_videos", video_file.replace("\\", "_"))
 	fourcc =cv.VideoWriter_fourcc(*'mp4v')
 	out = cv.VideoWriter(name, fourcc, video_fps, (1280,720))
 	while(cap.isOpened()):
-		print("It's running")
 		ret, frame=cap.read()
 		matches=None
 		if ret == True:
