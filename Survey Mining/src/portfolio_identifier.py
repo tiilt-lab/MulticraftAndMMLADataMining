@@ -458,10 +458,10 @@ for line in csv_file:
     video_fps = float(cap.get(cv.CAP_PROP_FPS))  # 5.0
     fsacc = process_gaze_datapoints(gaze_file, video_fps)
 
-    empty = make_empty(fk_q, video_fps)
-
     for i in range(0, len(refs)):
         refs[i].make_videos(fk_q, video_fps, i)
+
+    empty = make_empty(fk_q, video_fps)
 
     image_index = 0
     matcher = cv.DescriptorMatcher_create(cv.DescriptorMatcher_BRUTEFORCE)
