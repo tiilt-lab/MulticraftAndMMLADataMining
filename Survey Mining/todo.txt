@@ -1,0 +1,11 @@
+# TODO: 
+# Refactor 
+#   - File selection 
+#   - Image detection 
+#   - Debug and testing 
+
+# Quick description for new files 
+
+# Test pairwise processing code 
+
+# Explore fixation direction 

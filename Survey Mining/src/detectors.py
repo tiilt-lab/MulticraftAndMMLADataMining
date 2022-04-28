@@ -1,18 +1,11 @@
-from __future__ import print_function
-import cv2 as cv
-import numpy as np
-import argparse
-from matplotlib import pyplot as plt
-import csv
-import os
-from scipy import stats
-from collections import Counter
-import math
+# Appears to be a util file, don't use directly 
 
-def check_bounding_box(box_x,box_y,box_w,box_h,c_x, c_y):
-	if (c_x > box_x) and (c_x < (box_x+box_w)) and (c_y > box_y) and (c_y < box_y+box_h):
-		return True
-	return False
+# How to use 
+# Format stream data to numpy arrays for each column 
+# Run fixation_detection and saccade_detection with the arrays as inputs 
+# Use the exit outputs as results and store it into a csv
+
+import numpy as np
 
 def blink_detection(x, y, time, missing=0.0, minlen=10):
 	
@@ -177,7 +170,7 @@ def saccade_detection(x, y, time, missing=0.0, minlen=5, maxvel=40, maxacc=340):
 	# CONTAINERS
 	Ssac = []
 	Esac = []
-
+	#print(x,y,time)
 	# INTER-SAMPLE MEASURES
 	# the distance between samples is the square root of the sum
 	# of the squared horizontal and vertical interdistances
@@ -242,68 +235,21 @@ def saccade_detection(x, y, time, missing=0.0, minlen=5, maxvel=40, maxacc=340):
 	
 	return Ssac, Esac
 
-
-#minHessian = 400
-detector = cv.ORB_create(1000)
-#images_roi_counter = {}
-
-mapping_file = "qualtrics_mapping_excluding_questions.csv" #file provides mapping between the question and the reference image
-csv_file = open(mapping_file)
-csv_data=csv.DictReader(csv_file)
-images_files= [] #store the filename for each image
-images = [] #stores all of the images
-
-image_keypoints  = [] #variable to store keypoints for each reference image
-
-'''
-This chunk of code pulls in the images and then processes the keypoints and descriptors
-for all of the reference images
-'''
-fixation_counter = {}
-image_contours = {}
-user_fixation_counter = {}
-for line in csv_data:
-	file_name=line['image_file']+"_"+line["angle"]
-	if line['same']=="2":
-		file_name+="_R.jpg"
-	else:
-		file_name+=".jpg"
-	file_name = os.path.join("Allstimuliasjpg\\All stimuli as jpg_", file_name)
-	images_files.append(file_name)
-	#images_roi_counter[file_name]=Counter()
-	c_img = cv.imread(file_name,1)
-	img1 = c_img.copy()
-	img1 = cv.cvtColor(img1, cv.COLOR_BGR2GRAY)
- # trainImage
-	#img_mat = np.empty((img1.shape[0], img1.shape[1], 3), dtype=np.uint8)
-
-	#cv.imshow(img1, img_mat)
-	images.append(img1)
-	kp,dp = detector.detectAndCompute(img1, None)
-	image_keypoints.append({"keypoints": kp,"descriptors": dp})
-	#ret, thresh = cv.threshold(img1,127,255, cv.THRESH_BINARY) #we use thresholding to find the bounding box
-	th3 = cv.adaptiveThreshold(img1,255,cv.ADAPTIVE_THRESH_GAUSSIAN_C,cv.THRESH_BINARY,15,2)
-	contours, hier = cv.findContours(th3, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
-	#add all contouns to the fixation counter
-	#within each Counter make a counter for above median, below median, for time and score
-	image_contours[file_name]={}
-	fixation_counter[file_name]={}
-	contours_folder = ".\\contours"
-	for c in range(len(contours)):
-		#print(contours[c])
-		#print(hier[0][c])
-		(x,y,w,h) = cv.boundingRect(contours[c])
-		if (w * h) > 2000:
-			#print(w*h)
-			#c_contour = contours[c]
-			fixation_counter[file_name][c]= Counter()
-			image_contours[file_name][c] = contours[c]
-			img_save = c_img.copy()
-			cv.cvtColor(img_save, cv.COLOR_BGR2HSV)
-			cv.drawContours(img_save, contours, c, (0,255,0), 3)
-			path = os.path.join(contours_folder, str(images_files.index(file_name))+"_"+str(c) + ".jpg")
-			cv.imwrite(path, img_save)
-
-''' This loop iterates over the video files and performs feature extraction on each frame of the video.
-It also opens the corresponding gaze file and processes the data according to the associated video frame
-'''
+def filter_gaze(x, y, time, video_fps, missing=0.0): 
+	x, y, time = remove_missing(x, y, time, missing) 
+	time = (time * video_fps) / 1000 
+	time = np.around(time)
+	_, indices = np.unique(time, return_index=True) 
+	start_index = 0 
+	ret = [] 
+	for i in range(0, len(time)): 
+		if time[i] > time[indices[start_index]]: 
+			start_index += 1
+		if time[i] == time[indices[start_index]]: 
+			end_val = time[indices[start_index]] + 1 if start_index >= len(indices) - 1 else time[indices[start_index + 1]]
+			ret.append([time[i], end_val, x[i], y[i]]) 
+		else: 
+			Exception("unique time should only be equal to current time") 
+	return ret 
+	
+		
