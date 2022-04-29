@@ -13,3 +13,7 @@
 /Survey Mining/test_results/ 
 /Survey Mining/table_of_contents.md 
 /Survey Mining/todo.txt 
+/Survey Mining/src/__pycache__ 
+/Survey Mining/src/util/__pycache__
+/Survey Mining/src/test_code/__pycache__
+/Survey Mining/src/util/image_code/__pycache__

@@ -1,11 +1,11 @@
-import seaborn as sns
 import json
 import os
 import numpy as np
-from fastdtw import fastdtw
-from scipy.spatial.distance import euclidean
+import seaborn as sns
 from copy import deepcopy
+from fastdtw import fastdtw
 import matplotlib.pyplot as plt
+from scipy.spatial.distance import euclidean
 
 
 def change_all_lists(fn, dct, loqd):
