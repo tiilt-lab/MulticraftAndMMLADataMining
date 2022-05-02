@@ -47,10 +47,7 @@ def convert_to_pairwise_matrices(list_of_data):
             pair1 = list_of_data[i][j]
             for k in range(0, len(list_of_data[i])):
                 pair2 = list_of_data[i][k]
-                if isinstance(pair2[0], list):
-                    dist = dtw_ndim.distance_fast(np.array(pair1, dtype=np.double), np.array(pair2, dtype=np.double))
-                else:
-                    dist = dtw.distance_fast(array.array('d', pair1), array.array('d', pair2))
+                dist = dtw_ndim.distance_fast(np.array(pair1, dtype=np.double), np.array(pair2, dtype=np.double))
                 matrix[j][k] = dist
         list_of_data[i] = matrix
 
@@ -214,7 +211,6 @@ ref_axis = [i for i in range(0, 4)]
 # Creating question axis
 question_axis = [i for i in range(1, 21)]
 
-
 # pdmh: process_data_and_make_heatmap
 def pdmh(quadrant_data, heatmap_arr, populate_fn, axis, parent, child):
     # Users will be the axis
@@ -229,6 +225,8 @@ def pdmh(quadrant_data, heatmap_arr, populate_fn, axis, parent, child):
         htmp.get_figure().savefig(parent + child + "\\" + fname + ".png", bbox_inches="tight")
 
 
+one_hot_dict = {1: [1, 0, 0, 0], 2: [0, 1, 0, 0], 3: [0, 0, 1, 0], 4: [0, 0, 0, 1]}
+one_hot = lambda lst: [one_hot_dict[val] for val in lst]
 # "trunc", "direction"
 # loqd_dict = {"normal": list_of_quad_data}
 # data_dict = {"normal": data}
@@ -237,6 +235,8 @@ data_dict = {"normal": data, "trunc": trunc_data, "direction": direction_data}
 for child in loqd_dict.keys():
     list_of_quad_data = loqd_dict[child]
     data = data_dict[child]
+    if child != "direction":
+        data, list_of_quad_data = change_all_lists(one_hot, data, list_of_quad_data)
     heatmap = [[] for user_name in list_of_quad_data[0].keys()]
     pdmh(list_of_quad_data, heatmap, populate_within_builds, ref_axis, ".\\comparing_images\\building\\", child)
     heatmap = [[] for i in range(0, 4)]
