@@ -1,11 +1,13 @@
 import json
 import os
+import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
+import array
 from copy import deepcopy
-from fastdtw import fastdtw
-import matplotlib.pyplot as plt
+from dtaidistance import dtw, dtw_ndim
 from scipy.spatial.distance import euclidean
+from textwrap import wrap
 
 
 def change_all_lists(fn, dct, loqd):
@@ -17,7 +19,7 @@ def change_all_lists(fn, dct, loqd):
 def change_list_in_ref_data(fn, loqd):
     ret = deepcopy(loqd)
     for i in range(0, len(ret)):
-        for user in usernames:
+        for user in ret[i].keys():
             ret[i][user] = fn(ret[i][user])
         # If one wants to rewrite data
         # with open(files, 'w', encoding='utf-8') as quad_f:
@@ -28,7 +30,7 @@ def change_list_in_ref_data(fn, loqd):
 def change_list_in_stimuli_data(fn, dct):
     ret = deepcopy(dct)
     for user in usernames:
-        question_keys = sorted(list(user.keys()))
+        question_keys = sorted(list(ret[user].keys()))
         for question_key in question_keys:
             ret[user][question_key] = fn(ret[user][question_key])
     return ret
@@ -40,12 +42,15 @@ def convert_all_to_heatmap(list_of_distance_matrices, axis):
 
 def convert_to_pairwise_matrices(list_of_data):
     for i in range(0, len(list_of_data)):
-        matrix = [[None for _ in list_of_data] for _ in list_of_data]
+        matrix = [[None for _ in list_of_data[i]] for _ in list_of_data[i]]
         for j in range(0, len(list_of_data[i])):
             pair1 = list_of_data[i][j]
             for k in range(0, len(list_of_data[i])):
                 pair2 = list_of_data[i][k]
-                dist, path = fastdtw(np.array(pair1), np.array(pair2), dist=euclidean)
+                if isinstance(pair2[0], list):
+                    dist = dtw_ndim.distance_fast(np.array(pair1, dtype=np.double), np.array(pair2, dtype=np.double))
+                else:
+                    dist = dtw.distance_fast(array.array('d', pair1), array.array('d', pair2))
                 matrix[j][k] = dist
         list_of_data[i] = matrix
 
@@ -69,36 +74,45 @@ def direction(lst):
     return ret
 
 
-def populate_within_builds(usernames, within_refs):
-    for files in os.listdir('.\\building_ref_data'):
-        for user_ind in range(0, len(usernames)):
-            with open(files) as quad_f:
-                quad_data = json.load(quad_f)
-            within_refs[user_ind].append(quad_data[usernames[user_ind]])
+# compare between the structures a person was building
+def populate_within_builds(within_builds, loqd):
+    unames = None
+    for quad_data in loqd:
+        unames = sorted(list(quad_data.keys()))
+        for user_ind in range(0, len(unames)):
+            within_builds[user_ind].append(quad_data[unames[user_ind]])
+    return ["Comparing performance between builds for user " + user for user in unames]
 
 
-def populate_within_refs(usernames, within_refs):
+# compare between the people for each structure
+def populate_within_refs(within_refs, loqd):
     i = 0
-    for files in os.listdir('.\\building_ref_data'):
-        for user in usernames:
-            with open(files) as quad_f:
-                quad_data = json.load(quad_f)
+    for quad_data in loqd:
+        for user in quad_data.keys():
             within_refs[i].append(quad_data[user])
         i += 1
+    return ["Comparing people's performance on build " + str(i) for i in range(0, 4)]
 
 
-def populate_within_stimuli(usernames, within_stimuli):
+# compare between the people for each question
+def populate_within_stimuli(within_stimuli, data):
+    usernames = sorted(list(data.keys()))
+    questions = None
     for user in usernames:
-        questions = sorted(list(user.keys()))
+        questions = sorted(list(data[user].keys()))
         for i in range(0, len(questions)):
             within_stimuli[i].append(data[user][questions[i]])
+    return ["Comparing people's performance on question " + question for question in questions]
 
 
-def populate_within_user(usernames, within_user):
+# compare between the questions each person was doing
+def populate_within_user(within_user, data):
+    usernames = sorted(list(data.keys()))
     for user_ind in range(0, len(usernames)):
-        questions = sorted(list(usernames[user_ind].keys()))
+        questions = sorted(list(data[usernames[user_ind]].keys()))
         for i in range(0, len(questions)):
             within_user[user_ind].append(data[usernames[user_ind]][questions[i]])
+    return ["Comparing performance between questions for user " + user for user in usernames]
 
 
 def make_heatmap(arr, axis):
@@ -107,6 +121,7 @@ def make_heatmap(arr, axis):
         cmap=sns.diverging_palette(20, 220, n=200),
         square=True
     )
+    plt.show()
     ax.set_xticklabels(
         axis,
         rotation=45,
@@ -122,7 +137,7 @@ def make_heatmap(arr, axis):
 def remove_extra_questions(usernames, dct):
     for user in usernames:
         replace = {}
-        question_keys = sorted(list(user.keys()))
+        question_keys = sorted(list(dct[user].keys()))
         questions = dct[user]
 
         skip = [1, 18, 22, 23]
@@ -133,6 +148,9 @@ def remove_extra_questions(usernames, dct):
                     continue
                 replace[str(new_question_ind)] = questions[str(i)]
                 new_question_ind += 1
+        else:
+            for i in range(0, 20):
+                replace[str(i)] = questions[str(i)]
         dct[user] = replace
 
 
@@ -148,12 +166,32 @@ def truncate(lst):
     return ret
 
 
-with open("quadrants.json") as f:
+def check_and_make_folder(parent, folder):
+    path = os.path.join(parent, folder)
+    if not os.path.exists(path):
+        os.mkdir(path)
+    return path
+
+
+def make_folders():
+    for parent in [".\\comparing_people", ".\\comparing_images"]:
+        if not os.path.exists(parent):
+            os.mkdir(parent)
+        for child in ["building", "quiz"]:
+            new_path = check_and_make_folder(parent, child)
+            for grandchildren in ["normal", "trunc", "direction"]:
+                check_and_make_folder(new_path, grandchildren)
+
+
+make_folders()
+with open("..\\results\\quadrants.json") as f:
     data = json.load(f)
 
+# del data["_videos_lab_mc04_02_camera_screen_quadrants"]
+
 list_of_quad_data = []
-for files in os.listdir('.\\building_ref_data'):
-    with open(files) as quad_f:
+for files in os.listdir('..\\results\\building'):
+    with open(os.path.join('..\\results\\building', files)) as quad_f:
         quad_data = json.load(quad_f)
         list_of_quad_data.append(quad_data)
 
@@ -168,30 +206,43 @@ direction_data, direction_loqd = change_all_lists(direction, data, list_of_quad_
 
 # Creating user axis
 user_axis = [user_name for user_name in usernames]
+user_build_axis = [user_name for user_name in list_of_quad_data[0].keys()]
 
 # Creating ref axis
-ref_axis = [i for i in range(1, 21)]
+ref_axis = [i for i in range(0, 4)]
 
 # Creating question axis
-question_axis = [i for i in range(0, 5)]
+question_axis = [i for i in range(1, 21)]
 
-# Users will be the axis
-within_user = [[] for user_name in usernames]
-within_builds = [[] for user_name in usernames]
 
-# ref/question index will be axis
-within_stimuli = [[] for i in range(0, 20)]
-within_refs = [[] for i in range(0, 20)]
+# pdmh: process_data_and_make_heatmap
+def pdmh(quadrant_data, heatmap_arr, populate_fn, axis, parent, child):
+    # Users will be the axis
+    titles = populate_fn(heatmap_arr, quadrant_data)
+    convert_to_pairwise_matrices(heatmap_arr)
+    htmp_builds = convert_all_to_heatmap(heatmap_arr, axis)
+    for i in range(0, len(htmp_builds)):
+        htmp = htmp_builds[i]
+        title = titles[i]
+        htmp.set_title("\n".join(wrap(title, 60)))
+        fname = title.split(" ")[-1]
+        htmp.get_figure().savefig(parent + child + "\\" + fname + ".png", bbox_inches="tight")
 
-populate_within_stimuli(usernames, within_stimuli)
-populate_within_refs(usernames, within_refs)
-populate_within_user(usernames, within_user)
-populate_within_builds(usernames, within_builds)
-convert_to_pairwise_matrices(within_stimuli)
-convert_to_pairwise_matrices(within_refs)
-convert_to_pairwise_matrices(within_user)
-convert_to_pairwise_matrices(within_builds)
-convert_all_to_heatmap(within_stimuli, question_axis)
-convert_all_to_heatmap(within_refs, ref_axis)
-convert_all_to_heatmap(within_user, user_axis)
-convert_all_to_heatmap(within_builds, user_axis)
+
+# "trunc", "direction"
+# loqd_dict = {"normal": list_of_quad_data}
+# data_dict = {"normal": data}
+loqd_dict = {"normal": list_of_quad_data, "trunc": trunc_loqd, "direction": direction_loqd}
+data_dict = {"normal": data, "trunc": trunc_data, "direction": direction_data}
+for child in loqd_dict.keys():
+    list_of_quad_data = loqd_dict[child]
+    data = data_dict[child]
+    heatmap = [[] for user_name in list_of_quad_data[0].keys()]
+    pdmh(list_of_quad_data, heatmap, populate_within_builds, ref_axis, ".\\comparing_images\\building\\", child)
+    heatmap = [[] for i in range(0, 4)]
+    pdmh(list_of_quad_data, heatmap, populate_within_refs, user_build_axis, ".\\comparing_people\\building\\", child)
+    heatmap = [[] for i in range(0, 20)]
+    pdmh(data, heatmap, populate_within_stimuli, user_axis, ".\\comparing_people\\quiz\\", child)
+    heatmap = [[] for user_name in usernames]
+    pdmh(data, heatmap, populate_within_user, question_axis, ".\\comparing_images\\quiz\\", child)
+
