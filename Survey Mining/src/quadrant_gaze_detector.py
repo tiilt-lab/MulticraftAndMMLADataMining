@@ -53,40 +53,6 @@ def populate_quadrants(quadrants, fk_q, image_index, quad_list):
     
     return quadrants
 
-
-# # c_img: images[image_index]
-# def populate_quadrants(quadrants, c_img, c_x_os, c_y_os, fk_q, image_index):
-#     x = 0
-#     y = 0
-#     (h, w) = c_img.shape
-#
-#     one = np.array([[x, y], [x, h // 2], [w // 2, h // 2], [w // 2, y]]).reshape((-1, 1, 2)).astype(np.int32)
-#     two = np.array([[x + w // 2, y], [x + w // 2, h // 2], [x + w, h // 2], [x + w, y]]).reshape((-1, 1, 2)).astype(
-#         np.int32)
-#     three = np.array([[x, y + h // 2], [x, y + h], [x + w // 2, h], [x + w // 2, y + h // 2]]).reshape(
-#         (-1, 1, 2)).astype(np.int32)
-#     four = np.array([[x + w // 2, y + h // 2], [x + w // 2, y + h], [w, h], [x + w, y + h // 2]]).reshape(
-#         (-1, 1, 2)).astype(np.int32)
-#
-#     if image_index not in quadrants[fk_q]:
-#         quadrants[fk_q][image_index] = []
-#
-#     # sh = cv.circle(c_img, (c_x_os, c_y_os), 20, (255, 0, 0))
-#     # sh = cv.rectangle(sh, (x, y), (w//2, h//2), (255, 0, 0))
-#     # cv.imshow("sh", sh)
-#     # cv.waitKey(0)
-#
-#     if cv.pointPolygonTest(one, (c_x_os, c_y_os), 1) >= -5:
-#         quadrants[fk_q][image_index].append(1)
-#     elif cv.pointPolygonTest(two, (c_x_os, c_y_os), 1) >= -5:
-#         quadrants[fk_q][image_index].append(2)
-#     elif cv.pointPolygonTest(three, (c_x_os, c_y_os), 1) >= -5:
-#         quadrants[fk_q][image_index].append(3)
-#     elif cv.pointPolygonTest(four, (c_x_os, c_y_os), 1) >= -5:
-#         quadrants[fk_q][image_index].append(4)
-#
-#     return quadrants
-
 ''' This loop iterates over the video files and performs feature extraction on each frame of the video.
 It also opens the corresponding gaze file and processes the data according to the associated video frame
 '''
@@ -117,7 +83,7 @@ for line in csv_file:
     video_fps = float(cap.get(cv.CAP_PROP_FPS)) #5.0
     fsacc = process_gaze_datapoints(gaze_file, video_fps)
 
-    videos, empty = make_videos(fk_q, video_fps, len(image_keypoints) + 1)
+    videos, empty = make_videos(fk_q, video_fps, len(image_keypoints))
 
     # ------------------------------------------------------------------------------------------------------------
     # Initiatizing object detection 
@@ -169,15 +135,17 @@ for line in csv_file:
             ret, frame=cap.read()
             frame_counter += 1
 
-            # TODO: Change here too
-            if frame_counter > 856:
-                stop = 0
         
         # TODO: Normally, the code will always have a new frame with each fixation index so it will self terminate before 
         # the index goes out of bounds. In this case, it may not because the index can go out of bounds before a new frame 
-        # is seen. Might just be the right move to terminate code when index is about to go out of bounds. 
-        if c_fixation_index >= question_start + 30000: 
-            break 
+        # is seen. Might just be the right move to terminate code when index is about to go out of bounds.
+        if "lab\\mc04" in video_file and c_fix_start_time > 2915:
+            break
+        elif "lab\\mc04" not in video_file and c_fixation_index >= question_start + 30000:
+            break
+        if "lab\\mc04" in video_file and image_index == 13 and (frame_counter not in list(range(2385, 2409)) and
+                                                                frame_counter < 2484):
+            continue
 
         # print(c_fix_start_time, c_fix_end_time, c_fixation_index, frame_counter, image_index)
         #print(frame_counter, question_start, ret)
@@ -249,6 +217,8 @@ for line in csv_file:
 
                 if match_found:
                     quadrants = populate_quadrants(quadrants, fk_q, image_index, quad_list)
+                else:
+                    quad_list = []
 
                 p_kp,p_dp = keypoints2, descriptors2
 
