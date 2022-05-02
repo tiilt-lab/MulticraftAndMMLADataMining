@@ -47,7 +47,10 @@ def convert_to_pairwise_matrices(list_of_data):
             pair1 = list_of_data[i][j]
             for k in range(0, len(list_of_data[i])):
                 pair2 = list_of_data[i][k]
-                dist = dtw_ndim.distance_fast(np.array(pair1, dtype=np.double), np.array(pair2, dtype=np.double))
+                if len(pair1) == 0 or len(pair2) == 0:
+                    dist = float('nan')
+                else:
+                    dist = dtw_ndim.distance_fast(np.array(pair1, dtype=np.double), np.array(pair2, dtype=np.double))
                 matrix[j][k] = dist
         list_of_data[i] = matrix
 
@@ -113,9 +116,11 @@ def populate_within_user(within_user, data):
 
 
 def make_heatmap(arr, axis):
+    cmap = plt.get_cmap('RdBu').copy()
+    cmap.set_bad("black")
     ax = sns.heatmap(
         arr,
-        cmap=sns.diverging_palette(20, 220, n=200),
+        cmap=cmap,
         square=True
     )
     plt.show()
@@ -171,18 +176,26 @@ def check_and_make_folder(parent, folder):
 
 
 def make_folders():
-    for parent in [".\\comparing_people", ".\\comparing_images"]:
+    make_folder_permutations([".\\comparing_people", ".\\comparing_images"], ["building", "quiz"],
+                             ["normal", "trunc", "direction"])
+
+
+def make_folder_permutations(parents, children, granchildren):
+    for parent in parents:
         if not os.path.exists(parent):
             os.mkdir(parent)
-        for child in ["building", "quiz"]:
+        for child in children:
             new_path = check_and_make_folder(parent, child)
-            for grandchildren in ["normal", "trunc", "direction"]:
-                check_and_make_folder(new_path, grandchildren)
+            for grandchild in granchildren:
+                check_and_make_folder(new_path, grandchild)
 
 
 make_folders()
+make_folder_permutations([".\\comparing_people_fix", ".\\comparing_images_fix"], ["quiz"], ["trunc", "direction"])
 with open("..\\results\\quadrants.json") as f:
     data = json.load(f)
+with open("..\\results\\quadrants_fixations.json") as f:
+    fix_data = json.load(f)
 
 # del data["_videos_lab_mc04_02_camera_screen_quadrants"]
 
@@ -192,14 +205,21 @@ for files in os.listdir('..\\results\\building'):
         quad_data = json.load(quad_f)
         list_of_quad_data.append(quad_data)
 
+one_hot_dict = {1: [1, 0, 0, 0], 2: [0, 1, 0, 0], 3: [0, 0, 1, 0], 4: [0, 0, 0, 1]}
+one_hot = lambda lst: [one_hot_dict[val] for val in lst]
+
 usernames = sorted(list(data.keys()))
 
 # Clean data up -- in particular, remove the extra questions
 remove_extra_questions(usernames, data)
+remove_extra_questions(usernames, fix_data)
 
 # Extra processing of data
 trunc_data, trunc_loqd = change_all_lists(truncate, data, list_of_quad_data)
 direction_data, direction_loqd = change_all_lists(direction, data, list_of_quad_data)
+
+trunc_fix_data = change_list_in_stimuli_data(lambda lst: one_hot(truncate(lst)), fix_data)
+direction_fix_data = change_list_in_stimuli_data(direction, fix_data)
 
 # Creating user axis
 user_axis = [user_name for user_name in usernames]
@@ -224,19 +244,23 @@ def pdmh(quadrant_data, heatmap_arr, populate_fn, axis, parent, child):
         fname = title.split(" ")[-1]
         htmp.get_figure().savefig(parent + child + "\\" + fname + ".png", bbox_inches="tight")
 
-
-one_hot_dict = {1: [1, 0, 0, 0], 2: [0, 1, 0, 0], 3: [0, 0, 1, 0], 4: [0, 0, 0, 1]}
-one_hot = lambda lst: [one_hot_dict[val] for val in lst]
 # "trunc", "direction"
 # loqd_dict = {"normal": list_of_quad_data}
 # data_dict = {"normal": data}
-loqd_dict = {"normal": list_of_quad_data, "trunc": trunc_loqd, "direction": direction_loqd}
+loqd_dict = {"trunc": trunc_loqd, "normal": list_of_quad_data, "direction": direction_loqd}
 data_dict = {"normal": data, "trunc": trunc_data, "direction": direction_data}
+fix_dict = {"trunc": trunc_fix_data, "direction": direction_fix_data}
 for child in loqd_dict.keys():
     list_of_quad_data = loqd_dict[child]
     data = data_dict[child]
+    fix_data = fix_dict.get(child, [])
     if child != "direction":
         data, list_of_quad_data = change_all_lists(one_hot, data, list_of_quad_data)
+    if len(fix_data) > 0:
+        heatmap = [[] for i in range(0, 20)]
+        pdmh(fix_data, heatmap, populate_within_stimuli, user_axis, ".\\comparing_people_fix\\quiz\\", child)
+        heatmap = [[] for user_name in usernames]
+        pdmh(fix_data, heatmap, populate_within_user, question_axis, ".\\comparing_images_fix\\quiz\\", child)
     heatmap = [[] for user_name in list_of_quad_data[0].keys()]
     pdmh(list_of_quad_data, heatmap, populate_within_builds, ref_axis, ".\\comparing_images\\building\\", child)
     heatmap = [[] for i in range(0, 4)]
